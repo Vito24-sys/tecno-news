@@ -1,0 +1,1 @@
+This is a computer science blog built with Svelte, Tailwind CSS, and Supabase, where you can explore and upload news.

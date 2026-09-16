@@ -2,18 +2,45 @@
   import { onMount } from "svelte";
   import { supabase } from './supabaseClient';
   import PostCard from "./PostCard.svelte";
+  import Quill from "quill";
+  import 'quill/dist/quill.snow.css';
 
   let user = null;
   let authEmail = '';
   let authPassword = '';
+  let confirmPassword = '';
   let isRegistering = false
 
   let posts = [];
   let title = '';
-  let subtitle = '';
   let file = null;
   let loading = false;
   let uploading = false;
+
+  let quillInstance = null;
+
+  function initQuill(node){
+    quillInstance = new Quill(node, {
+      theme: 'snow',
+      placeholder: 'Escribe la noticia, resalta con negritas o añade imágenes...',
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          ['blockquote', 'code-block'],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          ['link', 'image'],
+          ['clean']
+        ]
+      }
+    });
+
+    return {
+      destroy() {
+        quillInstance = null;
+      }
+    };
+  }
 
   onMount(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -41,12 +68,23 @@
     e.preventDefault();
     try {
       if (isRegistering) {
+        if (authPassword !== confirmPassword){
+          alert('Las contraseñas no coinciden.');
+          return;
+        }
+        if (authPassword.length < 6){
+          alert('La contraseña debe tener al menos 6 caracteres');
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
           email: authEmail,
           password: authPassword,
         });
         if (error) throw error;
-        alert('Registro exitoso. Revisa tu correo o inicia sesión');
+        alert('Registro exitoso.');
+        isRegistering = false;
+        confirmPassword = '';
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: authEmail,
@@ -76,6 +114,12 @@
       return;
     }
 
+    const contentHtml = quillInstance ? quillInstance.root.innerHTML : '';
+    if (!quillInstance || quillInstance.getText().trim().length === 0){
+      alert('El contenido de la noticia no puede estar vacío.');
+      return;
+    }
+
     uploading = true;
     let imageUrl = null;
 
@@ -101,7 +145,7 @@
         .from('posts')
         .insert([{
           title,
-          subtitle,
+          subtitle: contentHtml,
           image_url: imageUrl,
           user_id: user.id
         }]);
@@ -109,7 +153,7 @@
       if (insertError) throw insertError;
 
       title = '';
-      subtitle = '';
+      if (quillInstance) quillInstance.setContents([]);
       file = null;
       event.target.reset();
       await fetchPosts();
@@ -185,6 +229,14 @@
            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-cyan-500"
            required
           >
+          {#if isRegistering}
+            <input
+             type="password"
+             bind:value={confirmPassword}
+             placeholder="Confirmar contraseña"
+             class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-cyan-500"
+            >
+          {/if}
           <button
             type="submit"
             class="w-full bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-semibold py-2 rounded-lg text-sm transition-colors"
@@ -211,24 +263,25 @@
            required
           >
           <div>
-            <label for="post-subtitle" class="block text-sm font-medium text-slate-300 mb-1">
-              Subtítulo / Resumen
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+              Contenido/ Noticia
             </label>
-            <textarea
-              id="post-subtitle"
-              bind:value={subtitle}
-              rows="4"
-              placeholder="Escribe aquí el resumen o desarrollo de la noticia..."
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-y transition-colors leading-relaxed"
-              required
-            ></textarea>
+            <div class="rounded-lg overflow-hidden border border-slate-700 bg-slate-900">
+              <div use:initQuill></div>
+            </div>
           </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">
+            Imagen de portada (Opcional)
+          </label>
           <input
            type="file"
            accept="image/*"
            onchange={handleFileChange}
            class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-cyan-600 file:text-white hover:file:bg-cyan-700 cursor-pointer"
           >
+        </div>
           <button
             type="submit"
             disabled={uploading}
@@ -267,3 +320,26 @@
 
   </div>
 </main>
+
+<style>
+  :global(.ql-toolbar.ql-snow){
+    border-color: #334155 !important;
+    background-color: #0f172a;
+  }
+  :global(.ql-container.ql-snow) {
+    border-color: #334155 !important;
+    background-color: #0f172a;
+    color: #f1f5f9;
+    min-height: 180px;
+    font-size: 0.95rem;
+  }
+  :global(.ql-stroke) {
+    stroke: #94a3b8 !important;
+  }
+  :global(.ql-fill) {
+    fill: #94a3b8 !important;
+  }
+  :global(.ql-picker) {
+    color: #94a3b8 !important;
+  }
+</style>

@@ -23,7 +23,9 @@
     <div class="space-y-3">
         <h3 class="text-xl font-bold text-slate-100 leading-snug hover:text-cyan-400 transition-colors">{title}</h3>
 
-        <p class="text-slate-200/90 text-base leading-7">{subtitle}</p>
+        <div class="text-slate-200/90 text-[15px] leading-7 space-y-2 break-words [&_img]:rounded-lg [&_img]:max-h-96 [&_img]:mx-auto [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_strong]:text-cyan-400 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-cyan-500 [&_blockquote]:pl-3 [&_blockquote]:italic">
+            {@html subtitle}
+        </div>
 
         {#if imageUrl}
             <div class="pt-2">
